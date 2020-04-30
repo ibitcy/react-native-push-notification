@@ -10,6 +10,7 @@ import android.content.IntentFilter;
 import android.os.Bundle;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.core.app.NotificationManagerCompat;
 
 import com.dieam.reactnativepushnotification.helpers.ApplicationBadgeHelper;
@@ -37,7 +38,7 @@ import com.google.firebase.iid.FirebaseInstanceId;
 import com.google.firebase.iid.InstanceIdResult;
 import com.google.firebase.messaging.FirebaseMessaging;
 
-public class RNPushNotification extends ReactContextBaseJavaModule implements ActivityEventListener {
+public class RNPushNotification extends ReactContextBaseJavaModule implements ActivityEventListener, Application.ActivityLifecycleCallbacks {
     public static final String LOG_TAG = "RNPushNotification";// all logging should use this tag
 
     private RNPushNotificationHelper mRNPushNotificationHelper;
@@ -56,7 +57,9 @@ public class RNPushNotification extends ReactContextBaseJavaModule implements Ac
         // This is used to delivery callbacks to JS
         mJsDelivery = new RNPushNotificationJsDelivery(reactContext);
 
-        mRNPushNotificationHelper.checkOrCreateDefaultChannel();
+//        mRNPushNotificationHelper.checkOrCreateDefaultChannel();
+
+        ((Application)(reactContext.getApplicationContext())).registerActivityLifecycleCallbacks(this);
     }
 
     @Override
@@ -96,7 +99,7 @@ public class RNPushNotification extends ReactContextBaseJavaModule implements Ac
             String action = actions.getString(i);
             intentFilter.addAction(getReactApplicationContext().getPackageName() + "." + action);
         }
-        
+
         getReactApplicationContext().registerReceiver(new BroadcastReceiver() {
             @Override
             public void onReceive(Context context, Intent intent) {
@@ -122,28 +125,28 @@ public class RNPushNotification extends ReactContextBaseJavaModule implements Ac
 
     @ReactMethod
     public void requestPermissions() {
-      final RNPushNotificationJsDelivery fMjsDelivery = mJsDelivery;
-      
-      FirebaseInstanceId.getInstance().getInstanceId()
-              .addOnCompleteListener(new OnCompleteListener<InstanceIdResult>() {
-                  @Override
-                  public void onComplete(@NonNull Task<InstanceIdResult> task) {
-                      if (!task.isSuccessful()) {
-                          return;
-                      }
+        final RNPushNotificationJsDelivery fMjsDelivery = mJsDelivery;
 
-                      WritableMap params = Arguments.createMap();
-                      params.putString("deviceToken", task.getResult().getToken());
-                      fMjsDelivery.sendEvent("remoteNotificationsRegistered", params);
-                  }
-              });
+        FirebaseInstanceId.getInstance().getInstanceId()
+                .addOnCompleteListener(new OnCompleteListener<InstanceIdResult>() {
+                    @Override
+                    public void onComplete(@NonNull Task<InstanceIdResult> task) {
+                        if (!task.isSuccessful()) {
+                            return;
+                        }
+
+                        WritableMap params = Arguments.createMap();
+                        params.putString("deviceToken", task.getResult().getToken());
+                        fMjsDelivery.sendEvent("remoteNotificationsRegistered", params);
+                    }
+                });
     }
 
     @ReactMethod
     public void subscribeToTopic(String topic) {
         FirebaseMessaging.getInstance().subscribeToTopic(topic);
     }
-    
+
     @ReactMethod
     public void unsubscribeFromTopic(String topic) {
         FirebaseMessaging.getInstance().unsubscribeFromTopic(topic);
@@ -238,7 +241,7 @@ public class RNPushNotification extends ReactContextBaseJavaModule implements Ac
      *
      */
     public void removeAllDeliveredNotifications() {
-      mRNPushNotificationHelper.clearNotifications();
+        mRNPushNotificationHelper.clearNotifications();
     }
 
     @ReactMethod
@@ -246,7 +249,7 @@ public class RNPushNotification extends ReactContextBaseJavaModule implements Ac
      * Returns a list of all notifications currently in the Notification Center
      */
     public void getDeliveredNotifications(Callback callback) {
-      callback.invoke(mRNPushNotificationHelper.getDeliveredNotifications());
+        callback.invoke(mRNPushNotificationHelper.getDeliveredNotifications());
     }
 
     @ReactMethod
@@ -255,6 +258,42 @@ public class RNPushNotification extends ReactContextBaseJavaModule implements Ac
      * an element in the provided array
      */
     public void removeDeliveredNotifications(ReadableArray identifiers) {
-      mRNPushNotificationHelper.clearDeliveredNotifications(identifiers);
+        mRNPushNotificationHelper.clearDeliveredNotifications(identifiers);
+    }
+
+    public static boolean foreground = true;
+
+    @Override
+    public void onActivityCreated(@NonNull Activity activity, @Nullable Bundle bundle) {
+        foreground = false;
+    }
+
+    @Override
+    public void onActivityStarted(@NonNull Activity activity) {
+        foreground = false;
+    }
+
+    @Override
+    public void onActivityResumed(@NonNull Activity activity) {
+        foreground = false;
+    }
+
+    @Override
+    public void onActivityPaused(@NonNull Activity activity) {
+        foreground = true;
+    }
+
+    @Override
+    public void onActivityStopped(@NonNull Activity activity) {
+        foreground = true;
+    }
+
+    @Override
+    public void onActivitySaveInstanceState(@NonNull Activity activity, @NonNull Bundle bundle) {
+    }
+
+    @Override
+    public void onActivityDestroyed(@NonNull Activity activity) {
+        foreground = true;
     }
 }

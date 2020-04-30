@@ -135,7 +135,7 @@ public class RNPushNotificationListenerService extends FirebaseMessagingService 
         }
 
         Log.v(LOG_TAG, "sendNotification: " + bundle);
-        if (!isForeground) {
+        if (isForeground) {
             Application applicationContext = (Application) context.getApplicationContext();
             RNPushNotificationHelper pushNotificationHelper = new RNPushNotificationHelper(applicationContext);
             pushNotificationHelper.sendToNotificationCentre(bundle);
@@ -143,19 +143,6 @@ public class RNPushNotificationListenerService extends FirebaseMessagingService 
     }
 
     private boolean isApplicationInForeground() {
-        ActivityManager activityManager = (ActivityManager) this.getSystemService(ACTIVITY_SERVICE);
-        List<RunningAppProcessInfo> processInfos = activityManager.getRunningAppProcesses();
-        if (processInfos != null) {
-            for (RunningAppProcessInfo processInfo : processInfos) {
-                if (processInfo.processName.equals(getApplication().getPackageName())) {
-                    if (processInfo.importance == RunningAppProcessInfo.IMPORTANCE_FOREGROUND) {
-                        for (String d : processInfo.pkgList) {
-                            return true;
-                        }
-                    }
-                }
-            }
-        }
-        return false;
+        return RNPushNotification.foreground;
     }
 }
